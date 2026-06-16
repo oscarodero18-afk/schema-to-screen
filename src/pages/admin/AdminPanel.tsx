@@ -40,21 +40,25 @@ const AdminPanel = () => {
   const [pendingSales, setPendingSales] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [codeRequests, setCodeRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const [agentsRes, salesRes, productsRes] = await Promise.all([
+      const [agentsRes, salesRes, codeRequestsRes, productsRes] = await Promise.all([
         supabaseClient.from('profiles').select('*').eq('role', 'agent'),
         supabaseClient.from('sales').select('*, product:products(name), customer:customers(name), agent:profiles(full_name)').order('created_at', { ascending: false }),
+        supabaseClient.from('code_requests' as any).select('*, profile:profiles(full_name, email, phone)').order('created_at', { ascending: false }),
         supabaseClient.from('products').select('*').order('name')
       ]);
 
       const sales = salesRes.data || [];
       const pending = sales.filter((s: any) => s.status === 'pending_approval');
       const approved = sales.filter((s: any) => s.status === 'approved');
+      const pendingCodes = (codeRequestsRes.data || []).filter((r: any) => r.status === 'pending');
       
       const revenue = approved.reduce((acc, curr) => acc + (curr.sale_price || 0), 0);
       
@@ -67,19 +71,57 @@ const AdminPanel = () => {
       setStats({
         totalAgents: agentsRes.data?.length || 0,
         activeAgents: agentsRes.data?.filter(a => a.status === 'active')?.length || 0,
-        pendingApprovals: pending.length,
+        pendingApprovals: pending.length + pendingCodes.length,
         totalRevenue: revenue,
         performanceLeaders: agentPerf.slice(0, 5)
       });
 
       setPendingSales(pending);
+      setCodeRequests(codeRequestsRes.data || []);
       setAgents(agentsRes.data || []);
       setProducts(productsRes.data || []);
     } catch (error) {
       console.error('Error fetching admin data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleApproveCodeRequest = async (requestId: string, userId: string) => {
+    const agentCode = `VTS-${Math.floor(1000 + Math.random() * 9000)}`;
+    try {
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .update({ agent_code: agentCode })
+        .eq('id', userId);
+      if (profileError) throw profileError;
+
+      const { error: requestError } = await supabaseClient
+        .from('code_requests' as any)
+        .update({ status: 'approved' })
+        .eq('id', requestId);
+      if (requestError) throw requestError;
+
+      Sonner.toast.success(`Agent code ${agentCode} assigned successfully`);
+      fetchData();
+    } catch (err: any) {
+      Sonner.toast.error(err.message);
+    }
+  };
+
+  const handleRejectCodeRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('code_requests' as any)
+        .update({ status: 'rejected' })
+        .eq('id', requestId);
+      if (error) throw error;
+      Sonner.toast.success('Request rejected');
+      fetchData();
+    } catch (err: any) {
+      Sonner.toast.error(err.message);
+    }
+  };
   useEffect(() => {
     fetchData();
   }, []);

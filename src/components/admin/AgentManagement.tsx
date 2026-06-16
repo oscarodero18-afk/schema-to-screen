@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabaseClient } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { 
 import { 
   Table, 
   TableBody, 
@@ -17,7 +19,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
   Search, 
   MoreHorizontal, 
   ShieldAlert, 
@@ -27,7 +28,9 @@ import {
   MapPin,
   Target,
   Edit,
+  MessageSquare,
   FileDown,
+  Send
   Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -58,9 +61,11 @@ interface Agent {
 }
 
 const AgentManagement = () => {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+  const [isEditDialogOpen, setIsAgentDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
   const [isEditDialogOpen, setIsAgentDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -253,7 +258,13 @@ Admin Team`
                       <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border shadow-2xl p-2">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground p-3">Agent Management</DropdownMenuLabel>
                         <DropdownMenuItem className="rounded-xl focus:bg-primary/5 focus:text-primary cursor-pointer p-3" onClick={() => { setEditingAgent(agent); setIsAgentDialogOpen(true); }}>
-                          <Edit className="mr-3 h-4 w-4" /> <span className="font-bold text-sm">Update Profile</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="rounded-xl focus:bg-primary/5 focus:text-primary cursor-pointer p-3" onClick={() => navigate(`/chat/${agent.id}`)}>
+                          <MessageSquare className="mr-3 h-4 w-4" /> <span className="font-bold text-sm">Open Chat</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="rounded-xl focus:bg-primary/5 focus:text-primary cursor-pointer p-3" onClick={() => exportAgentReport(agent)}>
+                        <DropdownMenuItem className="rounded-xl focus:bg-primary/5 focus:text-primary cursor-pointer p-3" onClick={() => navigate(`/chat/${agent.id}`)}>
+                          <MessageSquare className="mr-3 h-4 w-4" /> <span className="font-bold text-sm">Open Chat</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem className="rounded-xl focus:bg-primary/5 focus:text-primary cursor-pointer p-3" onClick={() => exportAgentReport(agent)}>
                           <FileDown className="mr-3 h-4 w-4" /> <span className="font-bold text-sm">Download Report</span>
